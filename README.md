@@ -1,2 +1,4 @@
-# learn_a_language
-Simple Telegram bot for language learning
+# Learn a language
+---
+
+Simple Telegram bot for language learning. Now it's for private using.
