@@ -13,14 +13,32 @@ class Row:
 
 
 class Card:
-    def __init__(self, path):
+    def __init__(self, path, context):
         self.path = path
+        self.num = context.user_data["num"]
 
     def choose_one(self) -> Row:
         with open(self.path+".txt", "r") as file:
             data = [l for l in file.readlines() if l != "\n"]
+        
+        """
         return Row(
             random.choice(
                 [(i, data[i]) for i in range(len(data))]
             )
         )
+        """
+
+        return Row([
+            self.num,
+            data[self.num % len(data)]
+        ])
+
+    def __repr__(self):
+        with open(self.path+".txt", "r") as file:
+            data = file.read()
+        
+        if len(data) > 4096: 
+            data = data[:4092] + "..."
+
+        return data

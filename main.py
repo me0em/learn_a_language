@@ -15,13 +15,17 @@ from models import Card
 
 @firewall(mode="users")
 def send_row(update, context):
-    card = Card(context.user_data["card"])
+    card = Card(context.user_data["card"], context)
     row = card.choose_one()
 
     context.user_data["translate"] = row.original_lang  # Storage for next iter
-    custom_keyboard = [[
-        telegram.InlineKeyboardButton("Translate", callback_data="translate")
-    ]]
+    custom_keyboard = [
+        [telegram.InlineKeyboardButton("Translate", callback_data="translate")],
+        [
+            telegram.InlineKeyboardButton("↙️ Cards", callback_data="Cards"),
+            telegram.InlineKeyboardButton("🥐 View", callback_data="View")
+        ]
+    ]
     reply_markup = telegram.InlineKeyboardMarkup(custom_keyboard)
 
     context.bot.edit_message_text(
@@ -45,10 +49,13 @@ def set_keyboard(update, context):
     )
 
     context.bot.send_message(
-        chat_id=update.effective_message.chat_id,
-        text="Hello!",
-        reply_markup=cards_keyboard
-    )
+            chat_id=update.effective_message.chat_id,
+            text="Hi 🌸\n\nI will manage your cards with translated words."
+            "You need to send me *.txt* document with such format:\n\n"
+            "`treu :: надежный, верный\nvorkommen :: встречаться`",
+            parse_mode=telegram.ParseMode.MARKDOWN,
+            reply_markup=cards_keyboard
+        )
 
     return
 
@@ -63,7 +70,19 @@ def callback_response(update, context):
     if goth is not None and goth.string == update.callback_query.data:
         return delete_card(update, context)
 
+    if update.callback_query.data == "Cards":
+        context.bot.deleteMessage(
+            chat_id=update.callback_query.message.chat_id,
+            message_id=update.callback_query.message.message_id,
+        )
+
+        return set_cards_keyboard(update, context)
+
+    if update.callback_query.data == "View":
+        return send_card_view(update, context)
+
     if update.callback_query.data == "next":
+        context.user_data["num"] += 1
         return send_row(update, context)
 
     if update.callback_query.data == "translate":
@@ -76,7 +95,11 @@ def callback_response(update, context):
             return
 
         custom_keyboard = [
-            [telegram.InlineKeyboardButton("Next", callback_data="next")]
+            [telegram.InlineKeyboardButton("Next", callback_data="next")],
+            [
+                telegram.InlineKeyboardButton("↙️ Cards", callback_data="Cards"),
+                telegram.InlineKeyboardButton("🥐 View", callback_data="View")
+            ]
         ]
         reply_markup = telegram.InlineKeyboardMarkup(custom_keyboard)
 
@@ -89,18 +112,42 @@ def callback_response(update, context):
 
 
 @firewall(mode="users")
+def send_card_view(update, context):
+    card = Card(context.user_data["card"], context)
+
+    custom_keyboard = [[
+        telegram.InlineKeyboardButton("↙️ Cards", callback_data="Cards"),
+        telegram.InlineKeyboardButton("Back to card", callback_data="next"),
+    ]]
+
+    reply_markup = telegram.InlineKeyboardMarkup(custom_keyboard)
+
+    context.bot.edit_message_text(
+            chat_id=update.callback_query.message.chat_id,
+            message_id=update.callback_query.message.message_id,
+            text=repr(card),
+            reply_markup=reply_markup
+        )
+    
+    return
+
+@firewall(mode="users")
 def set_cards_keyboard(update, context):
     with open("config.yml", "r") as file:
         config = yaml.safe_load(file)
 
-    cards = glob.glob(config["cards_path"] + "*.txt")
+    cards = glob.glob(f"{config['cards_path']}/{update.effective_message.chat_id}/*.txt")
 
     if len(cards) == 0:
         context.bot.send_message(
             chat_id=update.effective_message.chat_id,
             text="You don't have cards yet. "
-            "Send me the first one like document in .txt format",
+            "Send me the first one: *.txt* document with such format:\n\n"
+            "`treu :: надежный, верный\nvorkommen :: встречаться`",
+            parse_mode=telegram.ParseMode.MARKDOWN
         )
+
+        return
 
     cards_keys = list()
     for card in cards:
@@ -132,7 +179,9 @@ def choose_card(update, context):
         config = yaml.safe_load(file)
 
     context.user_data["card"] = config["cards_path"] + \
-        update.callback_query.data[4:]
+        "/" + str(update.effective_message.chat_id) + "/" + update.callback_query.data[4:]
+
+    context.user_data["num"] = 0 
 
     return send_row(update, context)
 
@@ -142,7 +191,7 @@ def delete_card(update, context):
     with open("config.yml", "r") as file:
         config = yaml.safe_load(file)
 
-    os.remove(config["cards_path"] + update.callback_query.data[4:])
+    os.remove(f"{config['cards_path']}/{update.effective_message.chat_id}/{update.callback_query.data[4:]}.txt")
 
     return set_cards_keyboard(update, context)
 
@@ -165,7 +214,7 @@ def file_loaded(update, context):
     else:
         name = document.file_name
 
-    with open(config["cards_path"]+name, "wb") as file:
+    with open(f"{config['cards_path']}/{update.effective_message.chat_id}/{name}", "wb") as file:
         telegram_file.download(out=file)
 
     context.bot.send_message(

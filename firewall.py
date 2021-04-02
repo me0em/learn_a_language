@@ -1,12 +1,9 @@
 import yaml
 
-
 def firewall(mode="all"):
     """ Firewall decorator
     Checks functions or method execution privileges
-
     Example of using:
-
     >>> @firewall(mode="admins")
     >>> def send_info(update, context):
     >>>     context.bot.send_message(
@@ -25,18 +22,21 @@ def firewall(mode="all"):
             try:
                 chat_id = update.callback_query.message.chat_id
             except AttributeError:
-                chat_id = update.message.chat_id
+                try:
+                    chat_id = update.message.chat_id
+                except:
+                    chat_id = update.message.chat.id  # FIXME
 
             with open("privileges.yml", "r") as file:
                 privileges = yaml.safe_load(file)
 
-            if mode not in privileges:
+            if mode != "all" and mode not in privileges:
                 raise AssertionError(
                     "Syntax error: can't find firewall mode in yaml"
                 )
 
             if chat_id in privileges[mode] or mode == "all":
-                func(*args)
+                return func(*args)
             else:
                 context.bot.send_message(
                     chat_id=chat_id,
