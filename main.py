@@ -1,6 +1,7 @@
 import yaml
 import glob
 import os
+import sys
 import re
 import telegram
 from telegram.ext import (
@@ -8,13 +9,24 @@ from telegram.ext import (
     CallbackQueryHandler, MessageHandler,
     Filters
 )
+import logging
 
 from firewall import firewall
 from models import Card
 
 
+logger = logging.getLogger()
+logger.setLevel(logging.DEBUG)
+handler = logging.StreamHandler(sys.stdout)
+handler.setLevel(logging.DEBUG)
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+handler.setFormatter(formatter)
+logger.addHandler(handler)
+
+
 @firewall(mode="users")
 def send_row(update, context):
+    # logger.debug("/start has been pressed")
     card = Card(context.user_data["card"], context)
     row = card.choose_one()
 
@@ -163,7 +175,6 @@ def set_cards_keyboard(update, context):
     cards_keyboard = telegram.InlineKeyboardMarkup(
         cards_keys, resize_keyboard=True
     )
-
     context.bot.send_message(
         chat_id=update.effective_message.chat_id,
         text="Choose you card",

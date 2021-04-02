@@ -1,6 +1,7 @@
 import yaml
 
-def firewall(mode="all"):
+def firewall(mode="users"):
+    print("145")
     """ Firewall decorator
     Checks functions or method execution privileges
     Example of using:
