@@ -20,20 +20,12 @@ class Card:
     def choose_one(self) -> Row:
         with open(self.path+".txt", "r") as file:
             data = [l for l in file.readlines() if l != "\n"]
-        
-        """
-        return Row(
-            random.choice(
-                [(i, data[i]) for i in range(len(data))]
-            )
-        )
-        """
 
         return Row([
             self.num,
             data[self.num % len(data)]
         ])
-
+        
     def __repr__(self):
         with open(self.path+".txt", "r") as file:
             data = file.read()

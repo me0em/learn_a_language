@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import yaml
 import glob
 import os
@@ -23,11 +25,21 @@ formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(messag
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 
+def get_config():
+    with open("config.yml", "r") as file:
+        config = yaml.safe_load(file)
+
+    return config
+
 
 @firewall(mode="users")
 def send_row(update, context):
-    # logger.debug("/start has been pressed")
-    card = Card(context.user_data["card"], context)
+    config = get_config()
+
+    path = config["cards_path"]
+    chat_id = str(update.effective_message.chat_id)
+
+    card = Card(f"{path}/{chat_id}/{context.user_data['card']}", context)
     row = card.choose_one()
 
     context.user_data["translate"] = row.original_lang  # Storage for next iter
@@ -52,6 +64,8 @@ def send_row(update, context):
 
 @firewall(mode="users")
 def set_keyboard(update, context):
+    config = get_config()
+
     cards_btn = [
         [telegram.KeyboardButton("Cards 🗃",
                                  callback_data="Cards")]
@@ -62,9 +76,7 @@ def set_keyboard(update, context):
 
     context.bot.send_message(
             chat_id=update.effective_message.chat_id,
-            text="Hi 🌸\n\nI will manage your cards with translated words."
-            "You need to send me *.txt* document with such format:\n\n"
-            "`treu :: надежный, верный\nvorkommen :: встречаться`",
+            text=config["info_message"],
             parse_mode=telegram.ParseMode.MARKDOWN,
             reply_markup=cards_keyboard
         )
@@ -125,7 +137,14 @@ def callback_response(update, context):
 
 @firewall(mode="users")
 def send_card_view(update, context):
-    card = Card(context.user_data["card"], context)
+    with open("config.yml", "r") as file:
+        config = yaml.safe_load(file)
+
+    path = config["cards_path"]
+    chat_id = str(update.effective_message.chat_id)
+
+    card = Card(f"{path}/{chat_id}/{context.user_data['card']}", context)
+    print(context.user_data["card"])
 
     custom_keyboard = [[
         telegram.InlineKeyboardButton("↙️ Cards", callback_data="Cards"),
@@ -186,12 +205,9 @@ def set_cards_keyboard(update, context):
 
 @firewall(mode="users")
 def choose_card(update, context):
-    with open("config.yml", "r") as file:
-        config = yaml.safe_load(file)
-
-    context.user_data["card"] = config["cards_path"] + \
-        "/" + str(update.effective_message.chat_id) + "/" + update.callback_query.data[4:]
-
+    # save only the card name, cuz we already know
+    # the path from config and chat_id from update instance
+    context.user_data["card"] = update.callback_query.data[4:]
     context.user_data["num"] = 0 
 
     return send_row(update, context)
@@ -226,6 +242,10 @@ def file_loaded(update, context):
         name = document.file_name
 
     with open(f"{config['cards_path']}/{update.effective_message.chat_id}/{name}", "wb") as file:
+        telegram_file.download(out=file)
+
+    # The aim of card dublicate it's to remember the all words we have show to user
+    with open(f"{config['cards_path']}/{update.effective_message.chat_id}/{name}-COPY", "wb") as file:
         telegram_file.download(out=file)
 
     context.bot.send_message(
