@@ -39,7 +39,7 @@ def send_row(update, context):
     path = config["cards_path"]
     chat_id = str(update.effective_message.chat_id)
 
-    card = Card(f"{path}/{chat_id}/{context.user_data['card']}", context)
+    card = Card(f"{path}/{chat_id}/{context.user_data['card']}")
     row = card.choose_one()
 
     context.user_data["translate"] = row.original_lang  # Storage for next iter
@@ -106,7 +106,6 @@ def callback_response(update, context):
         return send_card_view(update, context)
 
     if update.callback_query.data == "next":
-        context.user_data["num"] += 1
         return send_row(update, context)
 
     if update.callback_query.data == "translate":
@@ -143,7 +142,7 @@ def send_card_view(update, context):
     path = config["cards_path"]
     chat_id = str(update.effective_message.chat_id)
 
-    card = Card(f"{path}/{chat_id}/{context.user_data['card']}", context)
+    card = Card(f"{path}/{chat_id}/{context.user_data['card']}")
     print(context.user_data["card"])
 
     custom_keyboard = [[
@@ -208,7 +207,6 @@ def choose_card(update, context):
     # save only the card name, cuz we already know
     # the path from config and chat_id from update instance
     context.user_data["card"] = update.callback_query.data[4:]
-    context.user_data["num"] = 0 
 
     return send_row(update, context)
 
@@ -241,11 +239,13 @@ def file_loaded(update, context):
     else:
         name = document.file_name
 
-    with open(f"{config['cards_path']}/{update.effective_message.chat_id}/{name}", "wb") as file:
+    name = name[:-4]  # cut the .txt extension
+
+    with open(f"{config['cards_path']}/{update.effective_message.chat_id}/{name}.txt", "wb") as file:
         telegram_file.download(out=file)
 
     # The aim of card dublicate it's to remember the all words we have show to user
-    with open(f"{config['cards_path']}/{update.effective_message.chat_id}/{name}-COPY", "wb") as file:
+    with open(f"{config['cards_path']}/{update.effective_message.chat_id}/{name}-COPY.txt", "wb") as file:
         telegram_file.download(out=file)
 
     context.bot.send_message(

@@ -13,19 +13,30 @@ class Row:
 
 
 class Card:
-    def __init__(self, path, context):
-        self.path = path
-        self.num = context.user_data["num"]
+    def __init__(self, path_to_card):
+        self.path = path_to_card
 
     def choose_one(self) -> Row:
-        with open(self.path+".txt", "r") as file:
+        with open(self.path+"-COPY.txt", "r+") as file:
             data = [l for l in file.readlines() if l != "\n"]
 
-        return Row([
-            self.num,
-            data[self.num % len(data)]
-        ])
+            if len(data) == 0:   # if we alreay read all rows
+                source_file = open(self.path+".txt", "r")
+                data = source_file.read()
+                file.write(data)
+                data = [l for l in data.split("\n") if l != "\n"]
+                source_file.close()  # copy all source card to the copy
+
+        random_row_ind = random.randint(0, len(data)-1)
+
+        row = Row([random_row_ind, data[random_row_ind]])  # Card has been shuffled 
+        del data[random_row_ind]  # delete row in the card copy
         
+        with open(self.path+"-COPY.txt", "w") as file:
+            file.write("\n".join(data))
+
+        return row
+
     def __repr__(self):
         with open(self.path+".txt", "r") as file:
             data = file.read()
