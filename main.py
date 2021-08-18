@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
-
 import yaml
 import glob
 import os
 import sys
+import random
 import re
 import telegram
 from telegram.ext import (
@@ -167,6 +167,8 @@ def set_cards_keyboard(update, context):
         config = yaml.safe_load(file)
 
     cards = glob.glob(f"{config['cards_path']}/{update.effective_message.chat_id}/*.txt")
+    print("?", cards)
+    cards = [i for i in cards if i[-9:] != "-COPY.txt"]
 
     if len(cards) == 0:
         context.bot.send_message(
@@ -241,12 +243,19 @@ def file_loaded(update, context):
 
     name = name[:-4]  # cut the .txt extension
 
-    with open(f"{config['cards_path']}/{update.effective_message.chat_id}/{name}.txt", "wb") as file:
-        telegram_file.download(out=file)
+    with open(f"{config['cards_path']}/{update.effective_message.chat_id}/{name}.txt", "wb") as bfile:
+        telegram_file.download(out=bfile)
 
-    # The aim of card dublicate it's to remember the all words we have show to user
-    with open(f"{config['cards_path']}/{update.effective_message.chat_id}/{name}-COPY.txt", "wb") as file:
-        telegram_file.download(out=file)
+    with open(f"{config['cards_path']}/{update.effective_message.chat_id}/{name}.txt", "r+") as file:
+        data = [l for l in file.readlines() if l != "\n"]
+        random.shuffle(data)  # shuffle the rows
+
+        copy_file = open(f"{config['cards_path']}/{update.effective_message.chat_id}/{name}-COPY.txt", "w")
+        copy_file.write("\n".join(data))
+        file.seek(0)
+        file.write("\n".join(data))
+        file.truncate()
+        copy_file.close()
 
     context.bot.send_message(
         chat_id=update.message.chat_id,
