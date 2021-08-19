@@ -252,9 +252,9 @@ def file_loaded(update, context):
 
         copy_file = open(f"{config['cards_path']}/{update.effective_message.chat_id}/{name}-COPY.txt", "w")
         copy_file.write("\n".join(data))
-        file.seek(0)
-        file.write("\n".join(data))
-        file.truncate()
+        # file.seek(0)
+        # file.write("\n".join(data))
+        # file.truncate()
         copy_file.close()
 
     context.bot.send_message(
